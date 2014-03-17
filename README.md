@@ -1,0 +1,191 @@
+Box Java SDK
+=============
+
+Building
+--------
+
+### Eclipse
+
+To build from Eclipse, simply import the project into your workspace
+as an existing project.
+
+### Ant
+
+The easiest way of building with Ant is by running `ant` from the
+BoxJavaLibraryV2 directory. This will output a JAR to
+`dist/debug/BoxJavaLibraryV2.jar`. You can see a full list of additional targets
+by running `ant -p`.
+
+	$ ant -p
+
+	Main targets:
+
+	clean    Removes any built files.
+	debug    Performs a debug build.
+	release  Performs a release build.
+	test     Performs a debug build and then runs tests.
+	Default target: debug
+
+### Gradle (Experimental)
+
+There is also experimental support for Gradle, allowing you to use the SDK with
+Android Studio. You must have [Gradle 1.6](http://www.gradle.org/downloads)
+installed.
+
+Running `gradle build` will build the SDK and run its tests. A JAR will be
+placed in `build/libs/BoxJavaLibraryV2-1.0.jar`. Alternatively, you can run
+`gradle install` which will install the SDK to you local Maven repository. It
+can then be referenced from other projects with the dependency string
+`com.box.boxjavalibv2:BoxJavaLibraryV2:1.0`.
+
+**Note for Android users:** You might get a warning that says "WARNING:
+Dependency commons-logging :commons-logging:1.1.1 is ignored for the default
+configuration as it may be conflicting with the internal version provided by
+Android." This is expected and shouldn't affect your build.
+
+API Calls Quickstart
+--------------------
+
+### Hello World
+
+You can find a hello world example [here][hello-world].
+
+### Authenticate
+
+Authenticate the client with OAuth. For more details about the authentication flow(UI), please see the Authentication section.
+
+```java
+boxClient.authenticate(boxOAuthToken);
+```
+
+Our sdk auto refreshes OAuth access token when it expires. You will want to listen to the refresh events and update your stored token after refreshing.
+```java
+boxClient.addOAuthRefreshListener(new OAuthRefreshListener() {
+        @Override
+        public void onRefresh(IAuthData newAuthData) {
+            // TODO: save the auth data.
+        }
+});
+```
+
+After you exit the app and return back, you can use the stored oauth data to authenticate:
+```java
+boxClient.authenticate(loadStoredAuthData);
+``` 
+
+
+For more details please see the [hello world example][hello-world].
+
+### Get Default File Info
+
+```java
+BoxFile boxFile = boxClient.getFilesManager().getFile(fileId, null);
+```
+
+### Get Additional File Info
+
+Get default file info plus its description and SHA1.
+
+```java
+BoxDefaultRequestObject requestObj =
+  (new BoxDefaultRequestObject()).addField(BoxFile.FIELD_SHA1);
+		.addField(BoxFile.FIELD_DESCRIPTION);
+BoxFile boxFile = boxClient.getFilesManager().getFile(fileId, requestObj);
+```
+
+### Get Folder Children
+
+Get 30 child items, starting from the 20th one, requiring etag, description, and
+name to be included.
+
+```java
+BoxFolderRequestObject requestObj = 
+	BoxFolderRequestObject.getFolderItemsRequestObject(30, 20)
+		.addField(BoxFolder.FIELD_NAME)
+		.addField(BoxFolder.FIELD_DESCRIPTION)
+		.addField(BoxFolder.FIELD_ETAG);
+BoxCollection collection = 
+	boxClient.getFoldersManager().getFolderItems(folderId, requestObj);
+```
+
+### Upload a New File
+
+```java
+BoxFileUploadRequestObject requestObj = 
+	BoxFileUploadRequestObject.uploadFileRequestObject(parent, "name", file);
+BoxFile bFile = boxClient.getFilesManager().uploadFile(requestObj);
+```
+
+### Upload a File with a Progress Listener
+
+```java
+BoxFileUploadRequestObject requestObj = 
+	BoxFileUploadRequestObject.uploadFileRequestObject(parent, "name", file)
+		.setListener(listener));
+BoxFile bFile = boxClient.getFilesManager().uploadFile(requestObj);
+```
+
+### Download a File
+
+```java
+boxClient.getFilesManager().downloadFile(fileId, null);
+```
+
+### Delete a File
+
+Delete a file, but only if the etag matches.
+
+```java
+BoxFileRequestObject requestObj =
+	BoxFileRequestObject.deleteFileRequestObject().setIfMatch(etag);
+boxClient.getFilesManager().deleteFile(fileId, requestObj);
+```
+
+### Configure raw httpclient (e.g., set proxy)
+You need to override the createRestClient() method in BoxClient so that it returns a configured rest client.
+```java
+BoxClient client = new BoxClient(clientId, clientSecret) {
+    @Override
+    public IBoxRESTClient createRestClient() {
+        return new BoxRESTClient() {
+            @Override
+            public HttpClient getRawHttpClient() {
+                HttpClient client = super.getRawHttpClient();
+                // Now do the configure settings.
+                HttpHost proxy = new HttpHost("{proxy ip/url}",{proxy port}, "{proxy scheme, e.g. http}";
+                client.getParams().setParameter(ConnRouteNames.DEFAULT_PROXY, proxy);
+                return client; 
+            }
+        }
+    }
+};
+
+```
+
+
+Authentication
+------------
+The SDK provides an OAuth UI using javafx, this is a seperate java project in our github due to the fact that this UI requires javafx sdk and not everybody wants it.
+To install javafx, you can either follow [javafx instruction](http://www.oracle.com/technetwork/java/javafx/overview/index.html) or install the [javafx eclipse plugin](http://www.eclipse.org/efxclipse/install.html)
+
+You can find a sample using this oauth UI [here](https://github.com/box/box-java-sdk-v2/blob/master/BoxJavaFxOAuth/src/com/box/boxjavalibv2/javafxoauth/sample/SampleOAuthCaller.java). One thing to pay extra attention is that the call backs in the IAuthFlowListener() will all run on javafx thread, they cannot trigger java swing data change directly, the trigger need to be done in java swing thread. In the sample, this is done by SwingUtilities.invokeLater(runnable) method.
+
+
+[hello-world]: https://github.com/box/box-java-sdk-private/wiki/HelloWorld
+
+
+## Copyright and License
+
+Copyright 2014 Box, Inc. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
